@@ -10,6 +10,10 @@ from keras.callbacks import EarlyStopping
 from dateutil.relativedelta import relativedelta
 from myutils import data_preparation, data_normalization
 
+acs_data = pd.read_excel("ACS.xlsx")              
+labor_data = pd.read_excel("LaborData.xlsx")      
+eviction_data = pd.read_csv("evictionsInput.csv")
+
 census_tract_list = pd.read_csv('ACS.xlsx')['NAME'].tolist()
 static_feature_list = ['DP05_0039PE', 'DP05_0044PE', 'DP05_0038PE', 'DP05_0052PE',
                        'DP05_0037PE','DP02_0061PE', 'DP02_0068PE', 'DP02_0062PE',
