@@ -10,10 +10,11 @@ from keras.callbacks import EarlyStopping
 from dateutil.relativedelta import relativedelta
 from myutils import data_preparation, data_normalization
 
-census_tract_list = pd.read_csv('census_names.csv')['NAME'].tolist()
-static_feature_list = ['S2502_C05_001E', 'S2502_C05_018E', 'S2502_C05_019E', 'S2502_C05_020E',
-                       'S2502_C05_021E','S2503_C05_028E', 'S2503_C05_045E', 'S1702_C02_018E']
-
+census_tract_list = pd.read_csv('ACS.xlsx')['NAME'].tolist()
+static_feature_list = ['DP05_0039PE', 'DP05_0044PE', 'DP05_0038PE', 'DP05_0052PE',
+                       'DP05_0037PE','DP02_0061PE', 'DP02_0068PE', 'DP02_0062PE',
+                       'DP02_0060PE', 'DP02_0063PE', 'DP03_0088E', 'DP03_0119PE',
+                       'DP05_0001E']
 
 def data_denormalization(y_min, y_max, prediction):
     denominator = y_max - y_min
