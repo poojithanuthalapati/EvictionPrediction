@@ -10,15 +10,17 @@ from keras.callbacks import EarlyStopping
 from dateutil.relativedelta import relativedelta
 from myutils import data_preparation, data_normalization
 
+# Load datasets
 acs_data = pd.read_excel("ACS.xlsx")              
 labor_data = pd.read_excel("LaborData.xlsx")      
 eviction_data = pd.read_csv("evictionsInput.csv")
 
-census_tract_list = pd.read_csv('ACS.xlsx')['NAME'].tolist()
+# Define static features from ACS data
 static_feature_list = ['DP05_0039PE', 'DP05_0044PE', 'DP05_0038PE', 'DP05_0052PE',
                        'DP05_0037PE','DP02_0061PE', 'DP02_0068PE', 'DP02_0062PE',
                        'DP02_0060PE', 'DP02_0063PE', 'DP03_0088E', 'DP03_0119PE',
                        'DP05_0001E']
+
 
 def data_denormalization(y_min, y_max, prediction):
     denominator = y_max - y_min
@@ -76,8 +78,10 @@ def MARTIAN_algorithm(input_feature_len=6, step=1):
         test_st_date = (valid_start_date + relativedelta(months=3)).to_pydatetime().date()
         test_end_date = (test_st_date + relativedelta(months=3, days=-1))
 
+        # Pass all datasets to data_preparation function
         sw_train_x_static, sw_train_x_dynamic, sw_train_x_cases, sw_train_y, sw_train_y_gt, sw_val_x_static, sw_val_x_dynamic, sw_val_x_cases, sw_val_y, sw_val_y_gt, sw_test_x_static, sw_test_x_dynamic, sw_test_x_cases, sw_test_y, sw_test_y_gt, min_data, max_data = data_preparation(
-            train_st_date, test_end_date, input_feature_len, step)
+            train_st_date, test_end_date, input_feature_len, step,
+            acs_data, labor_data, eviction_data, static_feature_list)
 
         predicted_test = MultiView_model(x_train1=sw_train_x_cases, x_train2=sw_train_x_dynamic,
                                          x_train3=sw_train_x_static, y_train=sw_train_y, x_val1=sw_val_x_cases,
@@ -96,7 +100,9 @@ def MARTIAN_algorithm(input_feature_len=6, step=1):
             ground_truth_data_test = np.concatenate((ground_truth_data_test, ground_truth_test_i))
             predicted_data_test = np.concatenate((predicted_data_test, predicted_test_i))
 
-    print(rmse / counter, spearsman / counter)
+    print(f"Average RMSE: {rmse / counter}")
+    print(f"Average Spearman: {spearsman / counter}")
 
 
+# Run the algorithm
 MARTIAN_algorithm()
