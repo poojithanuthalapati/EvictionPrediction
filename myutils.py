@@ -34,6 +34,30 @@ def prepare_sequence_data(data, input_len, step=1):
     return np.array(X), np.array(y)
 
 
+def parse_labor_period(period_str):
+    """
+    Convert labor data period format (e.g., '2022 Jan') to datetime
+    """
+    try:
+        # Handle format like "2022 Jan"
+        if isinstance(period_str, str):
+            parts = period_str.strip().split()
+            if len(parts) == 2:
+                year = int(parts[0])
+                month_abbr = parts[1]
+                # Convert month abbreviation to number
+                month_map = {
+                    'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+                    'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+                }
+                month = month_map.get(month_abbr, 1)
+                return pd.Timestamp(year=year, month=month, day=1)
+        # If already a timestamp, return as is
+        return pd.to_datetime(period_str)
+    except:
+        return pd.NaT
+
+
 def data_preparation(train_start, test_end, input_feature_len, step, 
                      acs_data, labor_data, eviction_data, static_feature_list):
     """
@@ -65,8 +89,18 @@ def data_preparation(train_start, test_end, input_feature_len, step,
     # Get unique geoids
     geoids = eviction_filtered['geoid'].unique()
     
-    # Process labor data (dynamic features)
-    labor_data['Period'] = pd.to_datetime(labor_data['Period'])
+    # Process labor data (dynamic features) - FIXED DATE PARSING
+    # Handle the "Year Period" format (e.g., "2022 Jan")
+    if 'Period' in labor_data.columns:
+        labor_data['Period'] = labor_data['Period'].apply(parse_labor_period)
+    else:
+        # Check for Year and Period columns separately
+        if 'Year' in labor_data.columns and len(labor_data.columns) > 1:
+            # Assume second column is the period name
+            period_col = labor_data.columns[1]
+            labor_data['Period'] = labor_data['Year'].astype(str) + ' ' + labor_data[period_col].astype(str)
+            labor_data['Period'] = labor_data['Period'].apply(parse_labor_period)
+    
     labor_filtered = labor_data[
         (labor_data['Period'] >= train_start) & 
         (labor_data['Period'] <= test_end)
@@ -74,16 +108,27 @@ def data_preparation(train_start, test_end, input_feature_len, step,
     
     # Select numeric columns from labor data
     labor_features = ['labor force participation', 'employment', 'unemployment', 'unemployment rate']
-    labor_features = [col for col in labor_features if col in labor_data.columns]
+    # Use actual column names if they exist
+    available_labor_features = [col for col in labor_features if col in labor_data.columns]
+    
+    if len(available_labor_features) == 0:
+        # Use numeric columns excluding Period and Year
+        numeric_cols = labor_data.select_dtypes(include=[np.number]).columns
+        available_labor_features = [col for col in numeric_cols if col not in ['Year']]
+    
+    labor_features = available_labor_features
     
     # Process ACS data (static features)
-    # Assuming ACS data has 'geoid_2020_census_tract' column
+    # Find the geoid column in ACS data
     if 'geoid_2020_census_tract' in acs_data.columns:
         acs_geoid_col = 'geoid_2020_census_tract'
     else:
-        # Find the geoid column
         geoid_cols = [col for col in acs_data.columns if 'geoid' in col.lower()]
-        acs_geoid_col = geoid_cols[0] if geoid_cols else acs_data.columns[0]
+        if geoid_cols:
+            acs_geoid_col = geoid_cols[0]
+        else:
+            # Use first column as geoid
+            acs_geoid_col = acs_data.columns[0]
     
     # Prepare data arrays
     all_static = []
@@ -115,14 +160,14 @@ def data_preparation(train_start, test_end, input_feature_len, step,
                 (labor_filtered['Period'].dt.year == month.year) &
                 (labor_filtered['Period'].dt.month == month.month)
             ]
-            if len(labor_month) > 0:
+            if len(labor_month) > 0 and len(labor_features) > 0:
                 dynamic_features.append(labor_month[labor_features].values[0])
             else:
                 # Use previous month's values or zeros
                 if len(dynamic_features) > 0:
                     dynamic_features.append(dynamic_features[-1])
                 else:
-                    dynamic_features.append(np.zeros(len(labor_features)))
+                    dynamic_features.append(np.zeros(len(labor_features) if labor_features else 4))
         
         dynamic_features = np.array(dynamic_features)
         
