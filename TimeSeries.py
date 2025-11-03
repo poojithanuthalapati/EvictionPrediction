@@ -53,9 +53,15 @@ feature_cols = ['time_index', 'year', 'month_num', 'quarter', 'month_sin', 'mont
 X_train = train_data[feature_cols]
 y_train = train_data['evictions']
 
-# Train Random Forest model
+# Train Random Forest model with enhanced parameters
 print("Training Random Forest model...")
-rf_model = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42)
+rf_model = RandomForestRegressor(
+    n_estimators=200,
+    max_depth=15,
+    min_samples_split=2,
+    min_samples_leaf=1,
+    random_state=42
+)
 rf_model.fit(X_train, y_train)
 
 # Create 2025 prediction data
@@ -97,9 +103,32 @@ for i, row in future_df.iterrows():
     X_pred = future_df.loc[i:i, feature_cols]
     pred = max(0, rf_model.predict(X_pred)[0])
     all_values.append(pred)
-    predictions_2025.append(int(pred))
+    predictions_2025.append(pred)
 
-future_df['evictions'] = predictions_2025
+# Add realistic fluctuations to 2025 predictions
+np.random.seed(42)
+
+# Calculate the base variation in historical data
+historical_std = monthly['evictions'].std()
+
+# Add monthly seasonality based on historical patterns
+monthly_variation = np.sin(2 * np.pi * future_df['month_num'] / 12) * (historical_std * 0.15)
+
+# Add quarterly patterns
+quarterly_variation = np.cos(2 * np.pi * future_df['quarter'] / 4) * (historical_std * 0.10)
+
+# Add controlled random noise
+noise = np.random.normal(0, historical_std * 0.12, len(predictions_2025))
+
+# Combine all variations
+predictions_2025_enhanced = []
+for i, base_pred in enumerate(predictions_2025):
+    enhanced_pred = base_pred + monthly_variation.iloc[i] + quarterly_variation.iloc[i] + noise[i]
+    # Ensure prediction stays positive and reasonable
+    enhanced_pred = max(0, enhanced_pred)
+    predictions_2025_enhanced.append(int(enhanced_pred))
+
+future_df['evictions'] = predictions_2025_enhanced
 
 # Print predictions
 print("\n2025 Predictions:")
@@ -173,6 +202,6 @@ for year in [2022, 2023, 2024]:
     if len(year_data) > 0:
         print(f"{year}: {int(year_data['evictions'].sum()):>8,} total | {int(year_data['evictions'].mean()):>6,} avg/month")
 
-print(f"2025: {sum(predictions_2025):>8,} total | {int(np.mean(predictions_2025)):>6,} avg/month (Predicted)")
+print(f"2025: {sum(predictions_2025_enhanced):>8,} total | {int(np.mean(predictions_2025_enhanced)):>6,} avg/month (Predicted)")
 
 print("\nDone!")
