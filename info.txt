@@ -1,4 +1,4 @@
-We are only using sealed records from 2022-2024 to predict the eviction rates for 2025 for each month
+We are only using unsealed records from 2022-2024 to predict the eviction rates for 2025 for each month
 
 SUMMARY
 ===============================
