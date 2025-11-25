@@ -1,6 +1,6 @@
 We are only using unsealed records from 2022-2024 to predict the eviction rates for 2025 for each month
 
-SUMMARY (that came from the code
+SUMMARY that came from the code
 ===============================
 2022:   45,428 total |  3,785 avg/month
 2023:   43,069 total |  3,589 avg/month
